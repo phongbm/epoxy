@@ -44,6 +44,8 @@ dependencies {
   kapt project(':epoxy-processor')
   kaptTest project(':epoxy-processor')
 
+  implementation 'androidx.asynclayoutinflater:asynclayoutinflater:1.0.0'
+
   testImplementation rootProject.deps.junit
   testImplementation rootProject.deps.robolectric
   testImplementation rootProject.deps.mockito

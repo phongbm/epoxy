@@ -73,6 +73,10 @@ public abstract class EpoxyModel<T> {
     hasDefaultId = true;
   }
 
+  public boolean useAsyncInflation() {
+    return false;
+  }
+
   boolean hasDefaultId() {
     return hasDefaultId;
   }

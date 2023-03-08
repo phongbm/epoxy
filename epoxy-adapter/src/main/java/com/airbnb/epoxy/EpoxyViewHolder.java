@@ -1,6 +1,7 @@
 package com.airbnb.epoxy;
 
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.ViewParent;
 
 import com.airbnb.epoxy.ViewHolderState.ViewState;
@@ -12,6 +13,7 @@ import androidx.annotation.FloatRange;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.Px;
+import androidx.asynclayoutinflater.view.AsyncLayoutInflater;
 import androidx.recyclerview.widget.RecyclerView;
 
 @SuppressWarnings("WeakerAccess")
@@ -23,6 +25,9 @@ public class EpoxyViewHolder extends RecyclerView.ViewHolder {
 
   // Once the EpoxyHolder is created parent will be set to null.
   private ViewParent parent;
+
+  private boolean isInflated = false;
+  private InflationCallback inflationCallback = null;
 
   public EpoxyViewHolder(ViewParent parent, View view, boolean saveInitialState) {
     super(view);
@@ -37,9 +42,44 @@ public class EpoxyViewHolder extends RecyclerView.ViewHolder {
     }
   }
 
+  void inflateAsync(int layoutId) {
+    AsyncLayoutInflater inflater = new AsyncLayoutInflater(((ViewGroup) parent).getContext());
+    inflater.inflate(layoutId, ((ViewGroup) parent), (view, resId, parent) -> {
+      ((ViewGroup) itemView).removeAllViews();
+      ((ViewGroup) itemView).addView(view);
+      isInflated = true;
+      if (inflationCallback != null) {
+        inflationCallback.onInflated();
+      }
+    });
+  }
+
+  private void setInflationCallback(InflationCallback callback) {
+    inflationCallback = callback;
+    if (isInflated) {
+      inflationCallback.onInflated();
+    }
+  }
+
   void restoreInitialViewState() {
     if (initialViewState != null) {
       initialViewState.restore(itemView);
+    }
+  }
+
+  private void bindModel(
+      @SuppressWarnings("rawtypes") EpoxyModel model,
+      @Nullable EpoxyModel<?> previouslyBoundModel
+  ) {
+    if (previouslyBoundModel != null) {
+      // noinspection unchecked
+      model.bind(objectToBind(), previouslyBoundModel);
+    } else if (payloads.isEmpty()) {
+      // noinspection unchecked
+      model.bind(objectToBind());
+    } else {
+      // noinspection unchecked
+      model.bind(objectToBind(), payloads);
     }
   }
 
@@ -49,7 +89,13 @@ public class EpoxyViewHolder extends RecyclerView.ViewHolder {
 
     if (epoxyHolder == null && model instanceof EpoxyModelWithHolder) {
       epoxyHolder = ((EpoxyModelWithHolder) model).createNewHolder(parent);
-      epoxyHolder.bindView(itemView);
+      if (model.useAsyncInflation()) {
+        if (isInflated) {
+          epoxyHolder.bindView(itemView);
+        }
+      } else {
+        epoxyHolder.bindView(itemView);
+      }
     }
     // Safe to set to null as it is only used for createNewHolder method
     parent = null;
@@ -63,15 +109,14 @@ public class EpoxyViewHolder extends RecyclerView.ViewHolder {
     // noinspection unchecked
     model.preBind(objectToBind(), previouslyBoundModel);
 
-    if (previouslyBoundModel != null) {
-      // noinspection unchecked
-      model.bind(objectToBind(), previouslyBoundModel);
-    } else if (payloads.isEmpty()) {
-      // noinspection unchecked
-      model.bind(objectToBind());
+    if (model.useAsyncInflation()) {
+      setInflationCallback(() -> {
+        View view = ((ViewGroup) itemView).getChildAt(0);
+        epoxyHolder.bindView(view);
+        bindModel(model, previouslyBoundModel);
+      });
     } else {
-      // noinspection unchecked
-      model.bind(objectToBind(), payloads);
+      bindModel(model, previouslyBoundModel);
     }
 
     if (model instanceof GeneratedModel) {
@@ -143,5 +188,9 @@ public class EpoxyViewHolder extends RecyclerView.ViewHolder {
         + ", view=" + itemView
         + ", super=" + super.toString()
         + '}';
+  }
+
+  interface InflationCallback {
+    void onInflated();
   }
 }

@@ -11,6 +11,7 @@ import com.airbnb.epoxy.EpoxyVisibilityTracker
 import com.airbnb.epoxy.epoxyView
 import com.airbnb.epoxy.group
 import com.airbnb.epoxy.kotlinsample.helpers.carouselNoSnapBuilder
+import com.airbnb.epoxy.kotlinsample.models.ItemAsyncInflationHolder
 import com.airbnb.epoxy.kotlinsample.models.ItemDataClass
 import com.airbnb.epoxy.kotlinsample.models.ItemViewBindingDataClass
 import com.airbnb.epoxy.kotlinsample.models.carouselItemCustomView
@@ -57,6 +58,9 @@ class MainActivity : AppCompatActivity() {
         epoxyVisibilityTracker.attach(recyclerView)
 
         recyclerView.withModels {
+            ItemAsyncInflationHolder(0)
+                .id(0)
+                .addTo(this)
 
             manualLayoutParamsView {
                 id("manualLayoutParams")
